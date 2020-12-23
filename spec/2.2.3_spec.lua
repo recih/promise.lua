@@ -5,13 +5,23 @@ local sentinel = { sentinel = 'sentinel' }
 
 describe("2.2.2: If `onRejected` is a function,", function()
   describe("2.2.2.1: it must be called after `promise` is rejected, with `promise`’s rejection reason as its first argument.", function()
-    Helper.test_rejected(it, sentinel, function(promise, done)
-      async()
+    describe("can be rejected with any type of value", function(done)
+      local function testRejectValue(rejectValue, stringRepresentation)
+        Helper.test_rejected(it, rejectValue, function(promise, done)
+          async()
+    
+          promise:next(nil, function(value)
+            assert.are_equals(value, rejectValue)
+            done()
+          end)
+        end, " with " .. stringRepresentation)
+      end
 
-      promise:next(nil, function(value)
-        assert.are_equals(value, sentinel)
-        done()
-      end)
+      testRejectValue(5, "`number`")
+      testRejectValue(false, "`boolean`")
+      testRejectValue("test", "`string`")
+      testRejectValue({}, "`table`")
+      testRejectValue(nil, "`nil`")
     end)
   end)
 

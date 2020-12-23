@@ -5,13 +5,23 @@ local sentinel = { sentinel = 'sentinel' }
 
 describe("2.2.2: If `onFulfilled` is a function,", function()
   describe("2.2.2.1: it must be called after `promise` is fulfilled, with `promise`’s fulfillment value as its first argument.", function()
-    Helper.test_fulfilled(it, sentinel, function(promise, done)
-      async()
+    describe("can be fulfilled with any type of value", function(done)
+      local function testFulfillValue(fulfillValue, stringRepresentation)
+        Helper.test_fulfilled(it, fulfillValue, function(promise, done)
+          async()
+    
+          promise:next(function(value)
+            assert.are_equals(value, fulfillValue)
+            done()
+          end)
+        end, " with " .. stringRepresentation)
+      end
 
-      promise:next(function(value)
-        assert.are_equals(value, sentinel)
-        done()
-      end)
+      testFulfillValue(5, "`number`")
+      testFulfillValue(false, "`boolean`")
+      testFulfillValue("test", "`string`")
+      testFulfillValue({}, "`table`")
+      testFulfillValue(nil, "`nil`")
     end)
   end)
 

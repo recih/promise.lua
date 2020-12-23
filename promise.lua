@@ -50,7 +50,6 @@ transition = function(promise, state, value)
   if promise.state == state
     or promise.state ~= State.PENDING
     or ( state ~= State.FULFILLED and state ~= State.REJECTED )
-    or value == nil
   then
     return
   end

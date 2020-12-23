@@ -27,18 +27,19 @@ Helper.rejected = function(reason)
   end)
 end
 
-Helper.test_fulfilled = function(it, value, test)
-  it("already-fulfilled", function(done)
+Helper.test_fulfilled = function(it, value, test, name_suffix)
+  name_suffix = name_suffix or ""
+  it("already-fulfilled" .. name_suffix, function(done)
     test(Helper.resolved(value), done)
   end)
 
-  it("immediately-fulfilled", function(done)
+  it("immediately-fulfilled" .. name_suffix, function(done)
     local p = Promise.new()
     test(p, done)
     p:resolve(value)
   end)
 
-  it("eventually-fulfilled", function(done)
+  it("eventually-fulfilled" .. name_suffix, function(done)
     local p = Promise.new()
     test(p, done)
     Helper.timeout(0.05, function()
@@ -47,18 +48,19 @@ Helper.test_fulfilled = function(it, value, test)
   end)
 end
 
-Helper.test_rejected = function(it, reason, test)
-  it("already-rejected", function(done)
+Helper.test_rejected = function(it, reason, test, name_suffix)
+  name_suffix = name_suffix or ""
+  it("already-rejected" .. name_suffix, function(done)
     test(Helper.rejected(reason), done)
   end)
 
-  it("immediately-rejected", function(done)
+  it("immediately-rejected" .. name_suffix, function(done)
     local p = Promise.new()
     test(p, done)
     p:reject(reason)
   end)
 
-  it("eventually-rejected", function(done)
+  it("eventually-rejected" .. name_suffix, function(done)
     local p = Promise.new()
     test(p, done)
     Helper.timeout(0.05, function()
