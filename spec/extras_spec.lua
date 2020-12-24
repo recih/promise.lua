@@ -74,6 +74,56 @@ describe('.all', function()
   end)
 end)
 
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled
+describe('.all_settled', function()
+  it("resolves after all of the given promises have either fulfilled or rejected, with an array of objects that each describes the outcome of each promise", function(done)
+    async()
+
+    local result1 = { result = 1 }
+    local result2 = { result = 2 }
+    local result3 = { result = 3 }
+    local value1 = 42
+    local value2 = "Hello!"
+    local value3 = nil
+
+    local promise1 = Promise.new()
+    local promise2 = Promise.new()
+    local promise3 = Promise.new()
+
+    Helper.timeout(0.1, function()
+      promise1:reject(result1)
+    end)
+
+    Helper.timeout(0.15, function()
+      promise2:resolve(result2)
+    end)
+
+    Helper.timeout(0.2, function()
+      promise3:reject(result3)
+    end)
+
+    Promise.all_settled(promise1, promise2, promise3, value1, value2, value3):next(function(results)
+      assert.are_same({
+        { status = "rejected", reason = result1 },
+        { status = "fulfilled", value = result2 },
+        { status = "rejected", reason = result3 },
+        { status = "fulfilled", value = value1 },
+        { status = "fulfilled", value = value2 },
+        { status = "fulfilled", value = value3 },
+      }, results)
+      done()
+    end)
+  end)
+
+  it("is fulfilled when no promises are provided", function(done)
+    async()
+    
+    Promise.all():next(function()
+      done()
+    end)
+  end)
+end)
+
 -- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race
 describe(".race", function()
   it("returns the first resolved promise", function(done)

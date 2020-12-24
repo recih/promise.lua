@@ -253,6 +253,53 @@ function Promise.all(...)
   return promise
 end
 
+-- resolves after all of the given promises have either fulfilled or rejected, 
+-- with an array of objects that each describes the outcome of each promise.
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled
+function Promise.all_settled(...)
+  local promises = pack(...)
+  local results = {}
+  local remaining = promises.n
+
+  local promise = Promise.new()
+  if remaining <= 0 then
+    fulfill(promise, results)
+    return promise
+  end
+
+  local check_finished = function()
+    if remaining > 0 then
+      return
+    end
+    fulfill(promise, results)
+  end
+
+  for i = 1, promises.n do
+    local p = promises[i]
+    if type(p) == "table" and p.is_promise then
+      p:next(
+        function(value)
+          results[i] = { status = State.FULFILLED, value = value }
+          remaining = remaining - 1
+          check_finished()
+        end,
+        function(reason)
+          results[i] = { status = State.REJECTED, reason = reason }
+          remaining = remaining - 1
+          check_finished()
+        end
+      )
+    else
+      results[i] = { status = State.FULFILLED, value = p }
+      remaining = remaining - 1
+    end
+  end
+
+  check_finished()
+
+  return promise
+end
+
 -- resolve when any promises complete, reject when all promises are rejected
 -- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any
 function Promise.any(...)
