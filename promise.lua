@@ -253,6 +253,40 @@ function Promise.all(...)
   return promise
 end
 
+-- resolve when any promises complete, reject when all promises are rejected
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any
+function Promise.any(...)
+  local promises = pack(...)
+  local state = State.FULFILLED
+  local remaining = promises.n
+
+  local promise = Promise.new()
+
+  for i = 1, promises.n do
+    local p = promises[i]
+    if type(p) == "table" and p.is_promise then
+      p:next(
+        function(value)
+          fulfill(promise, value)
+        end,
+        function(reason)
+          remaining = remaining - 1
+
+          if remaining <= 0 then
+            reject(promise, "AggregateError: All promises were rejected")
+          end
+        end
+      )
+    else
+      -- resolve immediately if a non-promise provided
+      fulfill(promise, p)
+      break
+    end
+  end
+
+  return promise
+end
+
 -- returns a promise that fulfills or rejects as soon as one of the promises in an iterable fulfills or rejects, 
 -- with the value or reason from that promise
 -- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race

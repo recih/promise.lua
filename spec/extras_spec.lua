@@ -160,3 +160,92 @@ describe(".race", function()
     end)
   end)
 end)
+
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any
+describe(".any", function()
+  it("returns the first resolved promise", function(done)
+    async()
+
+    local promise1 = Promise.new()
+    local promise2 = Promise.new()
+    local promise3 = Promise.new()
+
+    Helper.timeout(0.1, function()
+      promise1:resolve(sentinel)
+    end)
+
+    Helper.timeout(0.15, function()
+      promise2:resolve(other)
+    end)
+
+    Helper.timeout(0.05, function()
+      promise3:reject(other)
+    end)
+
+    Promise.any(promise1, promise2, promise3):next(function(result)
+      assert.are_equals(sentinel, result)
+      done()
+    end)
+  end)
+
+  it("if all of the given promises are rejected, then the returned promise is rejected with an AggregateError", function(done)
+    async()
+
+    local promise1 = Promise.new()
+    local promise2 = Promise.new()
+    local promise3 = Promise.new()
+
+    Helper.timeout(0.1, function()
+      promise1:reject(other)
+    end)
+
+    Helper.timeout(0.2, function()
+      promise2:reject(other)
+    end)
+
+    promise3:reject(other)
+
+    local fulfillment = spy.new(function() end)
+    local rejection = spy.new(function() end)
+
+    Promise.any(promise1, promise2, promise3):next(function(value)
+      fulfillment()
+    end):catch(function(reason)
+      rejection()
+    end):next(function()
+      assert.spy(rejection).was_called()
+      assert.spy(fulfillment).was_not_called()
+      done()
+    end)
+  end)
+
+  it("immediately resolved when non-promise value provided in list", function(done)
+    async()
+
+    local promise1 = Promise.new()
+    local promise2 = Promise.new()
+    local value1 = 42
+
+    Helper.timeout(0.1, function()
+      promise1:reject(sentinel)
+    end)
+
+    Helper.timeout(0.2, function()
+      promise2:resolve(other)
+    end)
+
+    local fulfillment = spy.new(function() end)
+    local rejection = spy.new(function() end)
+
+    Promise.any(promise1, promise2, value1):next(function(value)
+      fulfillment()
+      assert.are_equals(value, value1)
+    end):catch(function(reason)
+      rejection()
+    end):next(function()
+      assert.spy(fulfillment).was_called()
+      assert.spy(rejection).was_not_called()
+      done()
+    end)
+  end)
+end)
