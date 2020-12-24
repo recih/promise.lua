@@ -5,13 +5,17 @@ local dummy = { dummy = 'dummy' } -- we fulfill or reject with this when we don'
 local sentinel = { sentinel = 'sentinel' }
 local other = { other = 'other' }
 
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all
 describe('.all', function()
-  it("returns results for each promise", function(done)
+  it("will resolve when all of the input's promises have resolved, or if the input iterable contains no promises", function(done)
     async()
 
     local result1 = { result = 1 }
     local result2 = { result = 2 }
     local result3 = { result = 3 }
+    local value1 = 42
+    local value2 = "Hello!"
+    local value3 = nil
 
     local promise1 = Promise.new()
     local promise2 = Promise.new()
@@ -29,13 +33,13 @@ describe('.all', function()
       promise3:resolve(result3)
     end)
 
-    Promise.all(promise1, promise2, promise3):next(function(results)
-      assert.are_same({result1, result2, result3}, results)
+    Promise.all(promise1, promise2, promise3, value1, value2, value3):next(function(results)
+      assert.are_same({result1, result2, result3, value1, value2, value3}, results)
       done()
     end)
   end)
 
-  it("is rejected when any promises are rejected", function(done)
+  it("is rejected when any promises are rejected, reject with this first rejection message / error", function(done)
     async()
 
     local result1 = { result = 1 }
@@ -54,7 +58,8 @@ describe('.all', function()
 
     Promise.all(promise1, promise2, promise3):next(
       nil,
-      function(results)
+      function(reason)
+        assert.are_equals(result2, reason)
         done()
       end
     )
@@ -69,6 +74,7 @@ describe('.all', function()
   end)
 end)
 
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race
 describe(".race", function()
   it("returns the first resolved promise", function(done)
     async()
@@ -95,57 +101,62 @@ describe(".race", function()
     end)
   end)
 
-  it("is resolved when any callbacks are resolved", function(done)
+  it("fulfills or rejects as soon as one of the promises in an iterable fulfills or rejects, with the value or reason from that promise", function(done)
     async()
 
     local promise1 = Promise.new()
     local promise2 = Promise.new()
 
     Helper.timeout(0.1, function()
-      promise1:reject(other)
+      promise1:reject(sentinel)
     end)
 
     Helper.timeout(0.2, function()
-      promise2:resolve(sentinel)
+      promise2:resolve(other)
     end)
 
-    Promise.race(promise1, promise2):next(function(result)
-      assert.are_equals(sentinel, result)
+    local fulfillment = spy.new(function() end)
+    local rejection = spy.new(function() end)
+
+    Promise.race(promise1, promise2):next(function(value)
+      fulfillment()
+    end):catch(function(reason)
+      rejection()
+      assert.are_equals(sentinel, reason)
+    end):next(function()
+      assert.spy(rejection).was_called()
+      assert.spy(fulfillment).was_not_called()
       done()
     end)
   end)
 
-  it("is rejected when all promises are rejected", function(done)
+  it("immediately resolved when non-promise value provided in list", function(done)
     async()
-
-    settimeout(0.3)
-    local result1 = { result = 1 }
-    local result2 = { result = 2 }
-    local result3 = { result = 3 }
 
     local promise1 = Promise.new()
     local promise2 = Promise.new()
-    local promise3 = Promise.new()
-
-    Helper.timeout(0.2, function()
-      promise1:reject(result1)
-    end)
-
-    Helper.timeout(0.15, function()
-      promise2:reject(result2)
-    end)
+    local value1 = 42
 
     Helper.timeout(0.1, function()
-      promise3:reject(result3)
+      promise1:reject(sentinel)
     end)
 
-    Promise.race(promise1, promise2, promise3):next(
-      function()
-      end,
-      function(results)
-        assert.are_same({result1, result2, result3}, results)
-        done()
-      end
-    )
+    Helper.timeout(0.2, function()
+      promise2:resolve(other)
+    end)
+
+    local fulfillment = spy.new(function() end)
+    local rejection = spy.new(function() end)
+
+    Promise.race(promise1, promise2, value1):next(function(value)
+      fulfillment()
+      assert.are_equals(value, value1)
+    end):catch(function(reason)
+      rejection()
+    end):next(function()
+      assert.spy(fulfillment).was_called()
+      assert.spy(rejection).was_not_called()
+      done()
+    end)
   end)
 end)

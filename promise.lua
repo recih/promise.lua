@@ -1,6 +1,8 @@
 -- Port of https://github.com/rhysbrettbowen/promise_impl/blob/master/promise.js
 -- and https://github.com/rhysbrettbowen/Aplus
 --
+local pack = table.pack or _G.pack
+
 local queue = {}
 
 local State = {
@@ -211,11 +213,12 @@ function Promise.update()
 end
 
 -- resolve when all promises complete
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all
 function Promise.all(...)
-  local promises = {...}
+  local promises = pack(...)
   local results = {}
   local state = State.FULFILLED
-  local remaining = #promises
+  local remaining = promises.n
 
   local promise = Promise.new()
 
@@ -226,20 +229,23 @@ function Promise.all(...)
     transition(promise, state, results)
   end
 
-  for i,p in ipairs(promises) do
-    p:next(
-      function(value)
-        results[i] = value
-        remaining = remaining - 1
-        check_finished()
-      end,
-      function(value)
-        results[i] = value
-        remaining = remaining - 1
-        state = State.REJECTED
-        check_finished()
-      end
-    )
+  for i = 1, promises.n do
+    local p = promises[i]
+    if type(p) == "table" and p.is_promise then
+      p:next(
+        function(value)
+          results[i] = value
+          remaining = remaining - 1
+          check_finished()
+        end,
+        function(reason)
+          reject(promise, reason)
+        end
+      )
+    else
+      results[i] = p
+      remaining = remaining - 1
+    end
   end
 
   check_finished()
@@ -247,21 +253,30 @@ function Promise.all(...)
   return promise
 end
 
--- resolve with first promise to complete
+-- returns a promise that fulfills or rejects as soon as one of the promises in an iterable fulfills or rejects, 
+-- with the value or reason from that promise
+-- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race
 function Promise.race(...)
-  local promises = {...}
+  local promises = pack(...)
   local promise = Promise.new()
 
-  Promise.all(...):next(nil, function(value)
-    reject(promise, value)
-  end)
-
   local success = function(value)
-    fulfill(promise, value)
+    promise:resolve(value)
   end
 
-  for _,p in ipairs(promises) do
-    p:next(success)
+  local fail = function(reason)
+    promise:reject(reason)
+  end
+
+  for i = 1, promises.n do
+    local p = promises[i]
+    if type(p) == "table" and p.is_promise then
+      p:next(success, fail)
+    else
+      -- resolve immediately if a non-promise provided
+      promise:resolve(p)
+      break
+    end
   end
 
   return promise
