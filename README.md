@@ -211,7 +211,7 @@ promise2:resolve('I resolved first!')
 
 * [1.2](https://promisesaplus.com/#point-7) `then` is a reserved word in Lua. `next` is used instead in this library.
 * [1.3](https://promisesaplus.com/#point-8) Valid value types
-  * Promises cannot be resolved with null (`nil`). Lua does not distinguish between
+  * Promises **CAN** be resolved with null (`nil`). But Lua does not distinguish between
   
     ```lua
     function()
