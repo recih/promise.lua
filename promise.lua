@@ -26,11 +26,12 @@ end
 
 local transition, resolve, run
 
-local Promise = {
+local Promise = {}
+local prototype = {
   is_promise = true,
   state = State.PENDING
 }
-Promise.mt = { __index = Promise }
+local mt = { __index = prototype }
 
 local do_async = function(callback)
   if Promise.async then
@@ -61,7 +62,7 @@ transition = function(promise, state, value)
   run(promise)
 end
 
-function Promise:next(on_fulfilled, on_rejected)
+function prototype:next(on_fulfilled, on_rejected)
   local promise = Promise.new()
 
   table.insert(self.queue, {
@@ -168,11 +169,23 @@ run = function(promise)
   end)
 end
 
+function prototype:catch(callback)
+  return self:next(nil, callback)
+end
+
+function prototype:resolve(value)
+  fulfill(self, value)
+end
+
+function prototype:reject(reason)
+  reject(self, reason)
+end
+
 function Promise.new(callback)
   local instance = {
     queue = {}
   }
-  setmetatable(instance, Promise.mt)
+  setmetatable(instance, mt)
 
   if callback then
     callback(
@@ -188,16 +201,16 @@ function Promise.new(callback)
   return instance
 end
 
-function Promise:catch(callback)
-  return self:next(nil, callback)
+function Promise.resolve(value)
+  return Promise.new(function(resolve, reject)
+    resove(value)
+  end)
 end
 
-function Promise:resolve(value)
-  fulfill(self, value)
-end
-
-function Promise:reject(reason)
-  reject(self, reason)
+function Promise.reject(reason)
+  return Promise.new(function(resolve, reject)
+    reject(reason)
+  end)
 end
 
 function Promise.update()
