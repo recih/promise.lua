@@ -231,13 +231,22 @@ function Promise.update()
   end
 end
 
+local function get_promises(...)
+  local args = pack(...)
+  if args.n == 1 and type(args[1]) == "table" and not Promise.is_promise(args[1]) then
+    return args[1]
+  end
+  return args
+end
+
 -- resolve when all promises complete
 -- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all
 function Promise.all(...)
-  local promises = pack(...)
+  local promises = get_promises(...)
   local results = {}
   local state = State.FULFILLED
-  local remaining = promises.n
+  local n = promises.n or #promises
+  local remaining = n
 
   local promise = Promise.new()
 
@@ -248,7 +257,7 @@ function Promise.all(...)
     transition(promise, state, results)
   end
 
-  for i = 1, promises.n do
+  for i = 1, n do
     local p = promises[i]
     if Promise.is_promise(p) then
       p:next(
@@ -276,9 +285,10 @@ end
 -- with an array of objects that each describes the outcome of each promise.
 -- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled
 function Promise.all_settled(...)
-  local promises = pack(...)
+  local promises = get_promises(...)
   local results = {}
-  local remaining = promises.n
+  local n = promises.n or #promises
+  local remaining = n
 
   local promise = Promise.new()
   if remaining <= 0 then
@@ -293,7 +303,7 @@ function Promise.all_settled(...)
     fulfill(promise, results)
   end
 
-  for i = 1, promises.n do
+  for i = 1, n do
     local p = promises[i]
     if Promise.is_promise(p) then
       p:next(
@@ -322,13 +332,14 @@ end
 -- resolve when any promises complete, reject when all promises are rejected
 -- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any
 function Promise.any(...)
-  local promises = pack(...)
+  local promises = get_promises(...)
   local state = State.FULFILLED
-  local remaining = promises.n
+  local n = promises.n or #promises
+  local remaining = n
 
   local promise = Promise.new()
 
-  for i = 1, promises.n do
+  for i = 1, n do
     local p = promises[i]
     if Promise.is_promise(p) then
       p:next(
@@ -357,8 +368,9 @@ end
 -- with the value or reason from that promise
 -- see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race
 function Promise.race(...)
-  local promises = pack(...)
+  local promises = get_promises(...)
   local promise = Promise.new()
+  local n = promises.n or #promises
 
   local success = function(value)
     promise:resolve(value)
@@ -368,7 +380,7 @@ function Promise.race(...)
     promise:reject(reason)
   end
 
-  for i = 1, promises.n do
+  for i = 1, n do
     local p = promises[i]
     if Promise.is_promise(p) then
       p:next(success, fail)
