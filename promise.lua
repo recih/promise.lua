@@ -90,7 +90,7 @@ resolve = function(promise, x)
   end
   
   -- x is a promise in the current implementation
-  if x.is_promise then 
+  if Promise.is_promise(x) then 
     -- 2.3.2.1 if x is pending, resolve or reject this promise after completion
     if x.state == State.PENDING then
       x:next(
@@ -201,6 +201,12 @@ function Promise.new(callback)
   return instance
 end
 
+function Promise.is_promise(value)
+  if type(value) ~= "table" then return end
+
+  return value.is_promise
+end
+
 function Promise.resolve(value)
   return Promise.new(function(resolve, reject)
     resove(value)
@@ -244,7 +250,7 @@ function Promise.all(...)
 
   for i = 1, promises.n do
     local p = promises[i]
-    if type(p) == "table" and p.is_promise then
+    if Promise.is_promise(p) then
       p:next(
         function(value)
           results[i] = value
@@ -289,7 +295,7 @@ function Promise.all_settled(...)
 
   for i = 1, promises.n do
     local p = promises[i]
-    if type(p) == "table" and p.is_promise then
+    if Promise.is_promise(p) then
       p:next(
         function(value)
           results[i] = { status = State.FULFILLED, value = value }
@@ -324,7 +330,7 @@ function Promise.any(...)
 
   for i = 1, promises.n do
     local p = promises[i]
-    if type(p) == "table" and p.is_promise then
+    if Promise.is_promise(p) then
       p:next(
         function(value)
           fulfill(promise, value)
@@ -364,7 +370,7 @@ function Promise.race(...)
 
   for i = 1, promises.n do
     local p = promises[i]
-    if type(p) == "table" and p.is_promise then
+    if Promise.is_promise(p) then
       p:next(success, fail)
     else
       -- resolve immediately if a non-promise provided
