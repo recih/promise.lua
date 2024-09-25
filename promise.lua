@@ -209,7 +209,7 @@ end
 
 function Promise.resolve(value)
   return Promise.new(function(resolve, reject)
-    resove(value)
+    resolve(value)
   end)
 end
 
